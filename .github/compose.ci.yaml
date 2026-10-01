@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:17
+
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U test -d test"
+        ]
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
+  api:
+    image: se-api:test
+
+    environment:
+      DATABASE_URL: postgresql+psycopg://test:test@db:5432/test
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    ports:
+      - "8000:8000"

@@ -4,6 +4,16 @@ services:
     build:
       context: .
 
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./app
+          target: /app/app
+
+        - action: rebuild
+          path: ./pyproject.toml
+
+
     restart: unless-stopped
 
     env_file:
