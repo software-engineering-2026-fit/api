@@ -179,4 +179,4 @@ jobs:
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             "$VPS_USER@$VPS_HOST" \
-            "sudo /usr/local/bin/se-api-deploy '$IMAGE_TAG'"
+            "sudo -n /usr/local/bin/se-api-deploy '$IMAGE_TAG'"
