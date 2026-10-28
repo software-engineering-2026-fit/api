@@ -14,7 +14,7 @@ if DATABASE_URL == "sqlite://":
 
 engine = create_engine(DATABASE_URL, echo=False, **engine_kwargs)
 
-
+#Creating a engine connecting Docker connection and database setup
 def get_session() -> Generator[Session, None, None]:
     with Session(engine) as session:
         yield session

@@ -6,7 +6,7 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from app.models.workout import Workout
 
-
+#Creating a end user table in the database
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
@@ -17,13 +17,13 @@ class User(SQLModel, table=True):
 
     workouts: list["Workout"] = Relationship(back_populates="user")
 
-
+#End user way to create a account
 class UserCreate(SQLModel):
     email: str
     name: str
     password: str
 
-
+#Api reply reading end user 
 class UserRead(SQLModel):
     id: UUID
     email: str
