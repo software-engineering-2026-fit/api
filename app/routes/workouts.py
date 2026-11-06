@@ -6,8 +6,22 @@ from sqlmodel import Session
 
 from app.auth.security import get_current_user
 from app.db.database import get_session
-from app.models import User, Workout, WorkoutCreate
-from app.services.workout_service import create_workout, get_workout, list_workouts
+from app.models import (
+    User,
+    Workout,
+    WorkoutCreate,
+    WorkoutExerciseCreate,
+    WorkoutExerciseRead,
+)
+from app.services.exercise_service import get_exercise
+from app.services.workout_service import (
+    add_exercise_to_workout,
+    create_workout,
+    get_workout,
+    list_workout_exercises,
+    list_workouts,
+    remove_exercise_from_workout,
+)
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
@@ -42,3 +56,57 @@ def add_workout(
     session: Annotated[Session, Depends(get_session)],
 ) -> Workout:
     return create_workout(session, workout, current_user.id)
+
+
+def _get_workout_or_404(session: Session, workout_id: UUID) -> Workout:
+    workout = get_workout(session, workout_id)
+    if workout is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
+    return workout
+
+
+def _get_own_workout_or_404(session: Session, workout_id: UUID, user: User) -> Workout:
+    workout = _get_workout_or_404(session, workout_id)
+    if workout.user_id != user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout")
+    return workout
+
+
+@router.get("/{workout_id}/exercises", response_model=list[WorkoutExerciseRead])
+def read_workout_exercises(
+    workout_id: UUID,
+    _: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+) -> list[WorkoutExerciseRead]:
+    _get_workout_or_404(session, workout_id)
+    return list_workout_exercises(session, workout_id)
+
+
+@router.post(
+    "/{workout_id}/exercises",
+    response_model=list[WorkoutExerciseRead],
+    status_code=status.HTTP_201_CREATED,
+)
+def add_workout_exercise(
+    workout_id: UUID,
+    data: WorkoutExerciseCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+) -> list[WorkoutExerciseRead]:
+    _get_own_workout_or_404(session, workout_id, current_user)
+    if get_exercise(session, data.exercise_id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not found")
+    add_exercise_to_workout(session, workout_id, data)
+    return list_workout_exercises(session, workout_id)
+
+
+@router.delete("/{workout_id}/exercises/{exercise_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_workout_exercise(
+    workout_id: UUID,
+    exercise_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+) -> None:
+    _get_own_workout_or_404(session, workout_id, current_user)
+    if not remove_exercise_from_workout(session, workout_id, exercise_id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Exercise not in workout")
