@@ -27,7 +27,13 @@ def list_workout_exercises(session: Session, workout_id: UUID) -> list[WorkoutEx
         .order_by(Exercise.name)
     ).all()
     return [
-        WorkoutExerciseRead(exercise=exercise, sets=link.sets, reps=link.reps)
+        WorkoutExerciseRead(
+            exercise=exercise,
+            sets=link.sets,
+            reps=link.reps,
+            weight_kg=link.weight_kg,
+            exhaustion_level=link.exhaustion_level,
+        )
         for link, exercise in rows
     ]
 
@@ -39,7 +45,10 @@ def add_exercise_to_workout(
     if link is None:
         link = WorkoutExercise(workout_id=workout_id, **data.model_dump())
     else:
-        link.sets, link.reps = data.sets, data.reps
+        link.sets = data.sets
+        link.reps = data.reps
+        link.weight_kg = data.weight_kg
+        link.exhaustion_level = data.exhaustion_level
     session.add(link)
     session.commit()
     session.refresh(link)

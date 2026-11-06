@@ -27,6 +27,26 @@ secret with a long random value.
 The `/users` and `/workouts` endpoints require authentication. `/auth/me`
 returns the authenticated user.
 
+## Logging workout exercises
+
+Create a workout, then add each exercise with `POST /workouts/{workout_id}/exercises`.
+Each entry requires an exercise ID, repetitions, and weight in kilograms.
+`sets` and the optional exhaustion rating (1–5) may also be supplied. For
+example:
+
+```json
+{
+  "exercise_id": "00000000-0000-0000-0000-000000000000",
+  "sets": 3,
+  "reps": 8,
+  "weight_kg": 40,
+  "exhaustion_level": 4
+}
+```
+
+Read the logged exercise details with `GET /workouts/{workout_id}/exercises`.
+Omit `exhaustion_level` when no rating is available.
+
 Database migrations are managed with Alembic:
 
 ```shell
