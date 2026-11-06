@@ -1,6 +1,6 @@
 from app.models.exercise import Exercise, ExerciseCreate, ExerciseRead
 from app.models.user import User, UserCreate, UserRead
-from app.models.workout import Workout
+from app.models.workout import Workout, WorkoutCreate
 from app.models.workout_exercise import (
     WorkoutExercise,
     WorkoutExerciseCreate,
@@ -18,4 +18,5 @@ __all__ = [
     "WorkoutExercise",
     "WorkoutExerciseCreate",
     "WorkoutExerciseRead",
+    "WorkoutCreate",
 ]

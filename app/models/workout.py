@@ -7,6 +7,11 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+class WorkoutCreate(SQLModel):
+    name: str
+    description: str | None = None
+
+
 class Workout(SQLModel, table=True):
     __tablename__ = "workouts"
 
