@@ -20,7 +20,10 @@ router = APIRouter(prefix="/exercises", tags=["exercises"])
 def read_exercises(
     _: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],
-    q: Annotated[str | None, Query(max_length=100, description="Search in name and description")] = None,
+    q: Annotated[
+        str | None,
+        Query(max_length=100, description="Search in name, description, muscle group, and equipment"),
+    ] = None,
     muscle_group: Annotated[str | None, Query(max_length=50)] = None,
     equipment: Annotated[str | None, Query(max_length=50)] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,

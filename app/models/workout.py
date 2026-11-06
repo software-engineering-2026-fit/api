@@ -4,12 +4,13 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from app.models.user import User
+    from app.models.user_workout import UserWorkout
 
 
 class WorkoutCreate(SQLModel):
     name: str
     description: str | None = None
+    public: bool = False
 
 
 class Workout(SQLModel, table=True):
@@ -18,6 +19,6 @@ class Workout(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str
     description: str | None = None
-    user_id: UUID = Field(foreign_key="users.id", index=True)
+    public: bool = Field(default=False, nullable=False)
 
-    user: "User" = Relationship(back_populates="workouts")
+    user_links: list["UserWorkout"] = Relationship(back_populates="workout")

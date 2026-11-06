@@ -21,6 +21,8 @@ def search_exercises(
             or_(
                 col(Exercise.name).ilike(pattern),
                 col(Exercise.description).ilike(pattern),
+                col(Exercise.muscle_group).ilike(pattern),
+                col(Exercise.equipment).ilike(pattern),
             )
         )
     if muscle_group:

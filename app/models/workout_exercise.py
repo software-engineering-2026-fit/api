@@ -21,8 +21,8 @@ class WorkoutExercise(SQLModel, table=True):
 class WorkoutExerciseCreate(SQLModel):
     exercise_id: UUID
     sets: int | None = Field(default=None, ge=1)
-    reps: int = Field(ge=1)
-    weight_kg: float = Field(ge=0)
+    reps: int | None = Field(default=None, ge=1)
+    weight_kg: float | None = Field(default=None, ge=0)
     exhaustion_level: int | None = Field(default=None, ge=1, le=5)
 
 

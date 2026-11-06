@@ -15,7 +15,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from app.models import User, Workout  # noqa: F401
+from app.models import User, UserWorkout, Workout  # noqa: F401
 from sqlmodel import SQLModel
 
 target_metadata = SQLModel.metadata

@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
-    from app.models.workout import Workout
+    from app.models.user_workout import UserWorkout
 
 #Creating a end user table in the database
 class User(SQLModel, table=True):
@@ -14,8 +14,9 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     name: str
     hashed_password: str
+    is_admin: bool = Field(default=False, nullable=False)
 
-    workouts: list["Workout"] = Relationship(back_populates="user")
+    workout_links: list["UserWorkout"] = Relationship(back_populates="user")
 
 #End user way to create a account
 class UserCreate(SQLModel):
@@ -28,3 +29,4 @@ class UserRead(SQLModel):
     id: UUID
     email: str
     name: str
+    is_admin: bool

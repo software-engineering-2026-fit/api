@@ -12,14 +12,18 @@ from app.models import (
     WorkoutCreate,
     WorkoutExerciseCreate,
     WorkoutExerciseRead,
+    WorkoutMemberRead,
 )
 from app.services.exercise_service import get_exercise
 from app.services.workout_service import (
     add_exercise_to_workout,
     create_workout,
     get_workout,
+    get_workout_membership,
     list_workout_exercises,
+    list_workout_members,
     list_workouts,
+    list_public_workouts,
     remove_exercise_from_workout,
 )
 
@@ -28,25 +32,26 @@ router = APIRouter(prefix="/workouts", tags=["workouts"])
 
 @router.get("/", response_model=list[Workout])
 def read_workouts(
-    _: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],
 ) -> list[Workout]:
-    return list_workouts(session)
+    return list_workouts(session, current_user.id)
+
+
+@router.get("/public", response_model=list[Workout])
+def read_public_workouts(
+    session: Annotated[Session, Depends(get_session)],
+) -> list[Workout]:
+    return list_public_workouts(session)
 
 
 @router.get("/{workout_id}", response_model=Workout)
 def read_workout(
     workout_id: UUID,
-    _: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],
 ) -> Workout:
-    workout = get_workout(session, workout_id)
-    if workout is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workout not found",
-        )
-    return workout
+    return _get_accessible_workout_or_404(session, workout_id, current_user)
 
 
 @router.post("/", response_model=Workout, status_code=status.HTTP_201_CREATED)
@@ -58,6 +63,16 @@ def add_workout(
     return create_workout(session, workout, current_user.id)
 
 
+@router.get("/{workout_id}/users", response_model=list[WorkoutMemberRead])
+def read_workout_users(
+    workout_id: UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+) -> list[WorkoutMemberRead]:
+    _get_own_workout_or_404(session, workout_id, current_user)
+    return list_workout_members(session, workout_id)
+
+
 def _get_workout_or_404(session: Session, workout_id: UUID) -> Workout:
     workout = get_workout(session, workout_id)
     if workout is None:
@@ -67,18 +82,28 @@ def _get_workout_or_404(session: Session, workout_id: UUID) -> Workout:
 
 def _get_own_workout_or_404(session: Session, workout_id: UUID, user: User) -> Workout:
     workout = _get_workout_or_404(session, workout_id)
-    if workout.user_id != user.id:
+    membership = get_workout_membership(session, workout_id, user.id)
+    if membership is None or not membership.owner:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your workout")
+    return workout
+
+
+def _get_accessible_workout_or_404(
+    session: Session, workout_id: UUID, user: User
+) -> Workout:
+    workout = _get_workout_or_404(session, workout_id)
+    if not workout.public and get_workout_membership(session, workout_id, user.id) is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
     return workout
 
 
 @router.get("/{workout_id}/exercises", response_model=list[WorkoutExerciseRead])
 def read_workout_exercises(
     workout_id: UUID,
-    _: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],
 ) -> list[WorkoutExerciseRead]:
-    _get_workout_or_404(session, workout_id)
+    _get_accessible_workout_or_404(session, workout_id, current_user)
     return list_workout_exercises(session, workout_id)
 
 
