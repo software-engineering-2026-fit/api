@@ -6,7 +6,7 @@ from sqlmodel import Session
 
 from app.auth.security import get_current_user
 from app.db.database import get_session
-from app.models import User, Workout
+from app.models import User, Workout, WorkoutCreate
 from app.services.workout_service import create_workout, get_workout, list_workouts
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
@@ -37,8 +37,8 @@ def read_workout(
 
 @router.post("/", response_model=Workout, status_code=status.HTTP_201_CREATED)
 def add_workout(
-    workout: Workout,
-    _: Annotated[User, Depends(get_current_user)],
+    workout: WorkoutCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],
 ) -> Workout:
-    return create_workout(session, workout)
+    return create_workout(session, workout, current_user.id)

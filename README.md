@@ -1,6 +1,46 @@
 # api
 FastAPI backend
 
+## Run with Docker
+
+Requirements: Docker Desktop with Docker Compose.
+
+1. From the project directory, create the environment file:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Edit `.env` and replace `POSTGRES_PASSWORD` and `SECRET_KEY` with your own
+   values. Keep `POSTGRES_USER` and `POSTGRES_DB` consistent with the values
+   configured there.
+
+3. Build and start the API and database:
+
+   ```powershell
+   docker compose up --build -d
+   ```
+
+   The API waits for the database to become healthy and applies database
+   migrations automatically when it starts.
+
+4. Open the API documentation at <http://localhost:8000/docs>. Check
+   <http://localhost:8000/health> for the health endpoint. To follow the API
+   startup logs, run:
+
+   ```powershell
+   docker compose logs -f api
+   ```
+
+To open a PostgreSQL prompt in the database container:
+
+```powershell
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Stop the containers with `docker compose down`. The database volume is kept,
+so its data remains for the next start.
+
 ## Authentication
 
 The API uses OAuth2 password flow with bearer JWT access tokens.
