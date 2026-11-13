@@ -65,6 +65,8 @@ class WorkoutSessionLogRead(SQLModel):
 class WorkoutSessionRead(SQLModel):
     id: UUID
     user_workout_id: UUID
+    workout_id: UUID
+    workout_name: str
     date: datetime
     ended_at: datetime | None
     logs: list[WorkoutSessionLogRead]

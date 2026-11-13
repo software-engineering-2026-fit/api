@@ -99,7 +99,9 @@ Individual set logs can be updated with `PATCH` or removed with `DELETE` at
 `/workout-sessions/{session_id}/logs/{log_id}`. A session can contain multiple
 logs for the same exercise. Finish a session with
 `POST /workout-sessions/{session_id}/end`; the response includes `ended_at`.
-Ending is idempotent, and new logs are rejected once a session has ended.
+Session responses include `user_workout_id` for the user's membership and
+`workout_id`/`workout_name` for the actual workout plan. Ending is idempotent,
+and new logs are rejected once a session has ended.
 
 The `20261113_0011` migration retains existing memberships and workout log
 history, converts each legacy set count into separate UUID-backed records, and

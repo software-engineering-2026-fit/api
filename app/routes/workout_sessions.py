@@ -193,9 +193,15 @@ def _get_session_or_404(
 def _read_session(
     session: Session, workout_session: WorkoutSession
 ) -> WorkoutSessionRead:
+    workout = get_workout_for_session(session, workout_session)
+    if workout is None:
+        raise RuntimeError("The workout for this session could not be found.")
+
     return WorkoutSessionRead(
         id=workout_session.id,
         user_workout_id=workout_session.user_workout_id,
+        workout_id=workout.id,
+        workout_name=workout.name,
         date=workout_session.date,
         ended_at=workout_session.ended_at,
         logs=list_workout_session_logs(session, workout_session.id),

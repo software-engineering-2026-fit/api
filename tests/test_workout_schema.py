@@ -298,9 +298,13 @@ class WorkoutSchemaTests(unittest.TestCase):
                 json={"workout_id": str(workout_id)},
             )
             self.assertEqual(session_response.status_code, 201)
-            workout_session_id = session_response.json()["id"]
-            self.assertIsNotNone(session_response.json()["date"])
-            self.assertIsNone(session_response.json()["ended_at"])
+            session_data = session_response.json()
+            workout_session_id = session_data["id"]
+            self.assertIsNotNone(session_data["date"])
+            self.assertIsNone(session_data["ended_at"])
+            self.assertEqual(session_data["workout_id"], str(workout_id))
+            self.assertEqual(session_data["workout_name"], "API Workout")
+            self.assertNotEqual(session_data["user_workout_id"], str(workout_id))
 
             payload = {
                 "exercise_id": str(exercise_id),
