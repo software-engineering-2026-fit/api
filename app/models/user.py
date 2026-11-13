@@ -16,7 +16,10 @@ class User(SQLModel, table=True):
     hashed_password: str
     is_admin: bool = Field(default=False, nullable=False)
 
-    workout_links: list["UserWorkout"] = Relationship(back_populates="user")
+    workout_links: list["UserWorkout"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
 
 #End user way to create a account
 class UserCreate(SQLModel):

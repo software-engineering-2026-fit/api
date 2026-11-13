@@ -7,13 +7,16 @@ from app.models.workout_exercise import (
     WorkoutExerciseRead,
 )
 from app.models.user_workout import UserWorkout, WorkoutMemberRead
-from app.models.workout_log import (
-    WorkoutLog,
-    WorkoutLogCreate,
-    WorkoutLogExercise,
-    WorkoutLogExerciseCreate,
-    WorkoutLogExerciseRead,
-    WorkoutLogRead,
+from app.models.workout_session import (
+    WorkoutSession,
+    WorkoutSessionCreate,
+)
+from app.models.workout_session_log import (
+    WorkoutSessionLog,
+    WorkoutSessionLogCreate,
+    WorkoutSessionLogRead,
+    WorkoutSessionLogUpdate,
+    WorkoutSessionRead,
 )
 
 __all__ = [
@@ -30,10 +33,11 @@ __all__ = [
     "WorkoutCreate",
     "UserWorkout",
     "WorkoutMemberRead",
-    "WorkoutLog",
-    "WorkoutLogCreate",
-    "WorkoutLogExercise",
-    "WorkoutLogExerciseCreate",
-    "WorkoutLogExerciseRead",
-    "WorkoutLogRead",
+    "WorkoutSession",
+    "WorkoutSessionCreate",
+    "WorkoutSessionRead",
+    "WorkoutSessionLog",
+    "WorkoutSessionLogCreate",
+    "WorkoutSessionLogUpdate",
+    "WorkoutSessionLogRead",
 ]

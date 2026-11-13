@@ -5,7 +5,7 @@ from app.routes.auth import router as auth_router
 from app.routes.exercises import router as exercises_router
 from app.routes.users import router as users_router
 from app.routes.workouts import router as workouts_router
-from app.routes.workout_logs import router as workout_logs_router
+from app.routes.workout_sessions import router as workout_sessions_router
 
 
 app = FastAPI()
@@ -23,7 +23,7 @@ app.add_middleware(
 
 app.include_router(users_router)
 app.include_router(workouts_router)
-app.include_router(workout_logs_router)
+app.include_router(workout_sessions_router)
 app.include_router(auth_router)
 app.include_router(exercises_router)
 

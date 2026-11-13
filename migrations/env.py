@@ -15,10 +15,9 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from app.models import User, UserWorkout, Workout  # noqa: F401
-from sqlmodel import SQLModel
+from app import models
 
-target_metadata = SQLModel.metadata
+target_metadata = models.WorkoutSession.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

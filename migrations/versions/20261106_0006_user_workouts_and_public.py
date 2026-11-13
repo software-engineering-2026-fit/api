@@ -21,7 +21,15 @@ def upgrade() -> None:
         sa.Column("public", sa.Boolean(), nullable=True),
     )
     op.execute(sa.text("UPDATE workouts SET public = false"))
-    op.alter_column("workouts", "public", nullable=False)
+    with op.batch_alter_table(
+        "workouts",
+        naming_convention={"fk": "%(table_name)s_%(column_0_name)s_fkey"},
+    ) as batch_op:
+        batch_op.alter_column(
+            "public",
+            existing_type=sa.Boolean(),
+            nullable=False,
+        )
 
     op.create_table(
         "user_workouts",
@@ -39,9 +47,13 @@ def upgrade() -> None:
         )
     )
 
-    op.drop_constraint("workouts_user_id_fkey", "workouts", type_="foreignkey")
     op.drop_index("ix_workouts_user_id", table_name="workouts")
-    op.drop_column("workouts", "user_id")
+    with op.batch_alter_table(
+        "workouts",
+        naming_convention={"fk": "%(table_name)s_%(column_0_name)s_fkey"},
+    ) as batch_op:
+        batch_op.drop_constraint("workouts_user_id_fkey", type_="foreignkey")
+        batch_op.drop_column("user_id")
 
 
 def downgrade() -> None:

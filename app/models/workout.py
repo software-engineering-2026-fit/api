@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
+    from app.models.workout_exercise import WorkoutExercise
     from app.models.user_workout import UserWorkout
 
 
@@ -21,4 +22,11 @@ class Workout(SQLModel, table=True):
     description: str | None = None
     public: bool = Field(default=False, nullable=False)
 
-    user_links: list["UserWorkout"] = Relationship(back_populates="workout")
+    user_links: list["UserWorkout"] = Relationship(
+        back_populates="workout",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )
+    exercise_links: list["WorkoutExercise"] = Relationship(
+        back_populates="workout",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "passive_deletes": True},
+    )

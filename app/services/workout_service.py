@@ -1,23 +1,26 @@
-from sqlmodel import Session, or_, select
 from uuid import UUID
 
-from app.models.exercise import Exercise
+from datetime import datetime, timezone
+
+from sqlmodel import Session, or_, select
+
 from app.models import (
     Exercise,
+    User,
+    UserWorkout,
     Workout,
     WorkoutCreate,
     WorkoutExercise,
     WorkoutExerciseCreate,
     WorkoutExerciseRead,
-    UserWorkout,
     WorkoutMemberRead,
-    WorkoutLog,
-    WorkoutLogCreate,
-    WorkoutLogExercise,
-    WorkoutLogExerciseRead,
-    WorkoutLogRead,
+    WorkoutSession,
+    WorkoutSessionCreate,
+    WorkoutSessionLog,
+    WorkoutSessionLogCreate,
+    WorkoutSessionLogRead,
+    WorkoutSessionLogUpdate,
 )
-from app.models.user import User
 
 
 def list_workouts(session: Session, user_id: UUID) -> list[Workout]:
@@ -46,7 +49,28 @@ def get_workout(session: Session, workout_id: UUID) -> Workout | None:
 def get_workout_membership(
     session: Session, workout_id: UUID, user_id: UUID
 ) -> UserWorkout | None:
-    return session.get(UserWorkout, (user_id, workout_id))
+    return session.exec(
+        select(UserWorkout).where(
+            UserWorkout.user_id == user_id,
+            UserWorkout.workout_id == workout_id,
+        )
+    ).first()
+
+
+def get_or_create_workout_membership(
+    session: Session, workout_id: UUID, user_id: UUID
+) -> UserWorkout:
+    membership = get_workout_membership(session, workout_id, user_id)
+    if membership is not None:
+        return membership
+    membership = UserWorkout(
+        user_id=user_id,
+        workout_id=workout_id,
+        owner=False,
+    )
+    session.add(membership)
+    session.flush()
+    return membership
 
 
 def list_workout_members(
@@ -87,7 +111,9 @@ def create_workout(
     return workout
 
 
-def list_workout_exercises(session: Session, workout_id: UUID) -> list[WorkoutExerciseRead]:
+def list_workout_exercises(
+    session: Session, workout_id: UUID
+) -> list[WorkoutExerciseRead]:
     rows = session.exec(
         select(WorkoutExercise, Exercise)
         .join(Exercise, Exercise.id == WorkoutExercise.exercise_id)
@@ -95,28 +121,30 @@ def list_workout_exercises(session: Session, workout_id: UUID) -> list[WorkoutEx
         .order_by(Exercise.name)
     ).all()
     return [
-        WorkoutExerciseRead(
-            exercise=exercise,
-            sets=link.sets,
-            reps=link.reps,
-            weight_kg=link.weight_kg,
-            exhaustion_level=link.exhaustion_level,
-        )
+        WorkoutExerciseRead(exercise=exercise, description=link.description)
         for link, exercise in rows
     ]
+
+
+def _get_workout_exercise(
+    session: Session, workout_id: UUID, exercise_id: UUID
+) -> WorkoutExercise | None:
+    return session.exec(
+        select(WorkoutExercise).where(
+            WorkoutExercise.workout_id == workout_id,
+            WorkoutExercise.exercise_id == exercise_id,
+        )
+    ).first()
 
 
 def add_exercise_to_workout(
     session: Session, workout_id: UUID, data: WorkoutExerciseCreate
 ) -> WorkoutExercise:
-    link = session.get(WorkoutExercise, (workout_id, data.exercise_id))
+    link = _get_workout_exercise(session, workout_id, data.exercise_id)
     if link is None:
         link = WorkoutExercise(workout_id=workout_id, **data.model_dump())
     else:
-        link.sets = data.sets
-        link.reps = data.reps
-        link.weight_kg = data.weight_kg
-        link.exhaustion_level = data.exhaustion_level
+        link.description = data.description
     session.add(link)
     session.commit()
     session.refresh(link)
@@ -126,7 +154,7 @@ def add_exercise_to_workout(
 def remove_exercise_from_workout(
     session: Session, workout_id: UUID, exercise_id: UUID
 ) -> bool:
-    link = session.get(WorkoutExercise, (workout_id, exercise_id))
+    link = _get_workout_exercise(session, workout_id, exercise_id)
     if link is None:
         return False
     session.delete(link)
@@ -134,72 +162,139 @@ def remove_exercise_from_workout(
     return True
 
 
-def list_workout_logs(session: Session, user_id: UUID) -> list[WorkoutLogRead]:
-    rows = session.exec(
-        select(WorkoutLog, Workout)
-        .join(Workout, Workout.id == WorkoutLog.workout_id)
-        .where(WorkoutLog.user_id == user_id)
-        .order_by(
-            WorkoutLog.performed_on.desc(),
-            WorkoutLog.created_at.desc(),
-            WorkoutLog.id.desc(),
+def create_workout_session(
+    session: Session, user_workout_id: UUID, data: WorkoutSessionCreate
+) -> WorkoutSession:
+    workout_session = WorkoutSession(
+        user_workout_id=user_workout_id,
+        date=data.date,
+    )
+    session.add(workout_session)
+    session.commit()
+    session.refresh(workout_session)
+    return workout_session
+
+
+def end_workout_session(
+    session: Session, workout_session: WorkoutSession
+) -> WorkoutSession:
+    if workout_session.ended_at is None:
+        workout_session.ended_at = datetime.now(timezone.utc)
+        session.add(workout_session)
+        session.commit()
+        session.refresh(workout_session)
+    return workout_session
+
+
+def get_workout_session(
+    session: Session, session_id: UUID, user_id: UUID
+) -> WorkoutSession | None:
+    return session.exec(
+        select(WorkoutSession)
+        .join(UserWorkout, UserWorkout.id == WorkoutSession.user_workout_id)
+        .where(
+            WorkoutSession.id == session_id,
+            UserWorkout.user_id == user_id,
         )
+    ).first()
+
+
+def list_workout_sessions(session: Session, user_id: UUID) -> list[WorkoutSession]:
+    statement = (
+        select(WorkoutSession)
+        .join(UserWorkout, UserWorkout.id == WorkoutSession.user_workout_id)
+        .where(UserWorkout.user_id == user_id)
+        .order_by(WorkoutSession.date.desc(), WorkoutSession.id.desc())
+    )
+    return list(session.exec(statement).all())
+
+
+def list_workout_session_logs(
+    session: Session, workout_session_id: UUID
+) -> list[WorkoutSessionLogRead]:
+    rows = session.exec(
+        select(WorkoutSessionLog, Exercise)
+        .join(Exercise, Exercise.id == WorkoutSessionLog.exercise_id)
+        .where(WorkoutSessionLog.workout_session_id == workout_session_id)
+        .order_by(WorkoutSessionLog.timestamp, WorkoutSessionLog.id)
     ).all()
     return [
-        _read_workout_log(session, workout_log, workout.name)
-        for workout_log, workout in rows
+        _read_workout_session_log(log, exercise)
+        for log, exercise in rows
     ]
 
 
-def create_workout_log(
-    session: Session, user_id: UUID, data: WorkoutLogCreate
-) -> WorkoutLogRead:
-    workout_log = WorkoutLog(
-        user_id=user_id,
-        workout_id=data.workout_id,
-        performed_on=data.performed_on,
+def _read_workout_session_log(
+    workout_log: WorkoutSessionLog, exercise: Exercise
+) -> WorkoutSessionLogRead:
+    return WorkoutSessionLogRead(
+        id=workout_log.id,
+        workout_session_id=workout_log.workout_session_id,
+        exercise_id=workout_log.exercise_id,
+        exercise_name=exercise.name,
+        weight=workout_log.weight,
+        reps=workout_log.reps,
+        exhaustion_level=workout_log.exhaustion_level,
+        timestamp=workout_log.timestamp,
+    )
+
+
+def get_workout_session_log(
+    session: Session, log_id: UUID, workout_session_id: UUID
+) -> tuple[WorkoutSessionLog, Exercise] | None:
+    return session.exec(
+        select(WorkoutSessionLog, Exercise)
+        .join(Exercise, Exercise.id == WorkoutSessionLog.exercise_id)
+        .where(
+            WorkoutSessionLog.id == log_id,
+            WorkoutSessionLog.workout_session_id == workout_session_id,
+        )
+    ).first()
+
+
+def create_workout_session_log(
+    session: Session,
+    workout_session_id: UUID,
+    data: WorkoutSessionLogCreate,
+) -> WorkoutSessionLogRead:
+    workout_log = WorkoutSessionLog(
+        workout_session_id=workout_session_id,
+        **data.model_dump(),
     )
     session.add(workout_log)
-    session.flush()
-
-    for exercise_data in data.exercises:
-        session.add(
-            WorkoutLogExercise(
-                workout_log_id=workout_log.id,
-                **exercise_data.model_dump(),
-            )
-        )
-
     session.commit()
     session.refresh(workout_log)
-    workout = session.get(Workout, workout_log.workout_id)
-    if workout is None:
-        raise RuntimeError("The workout was deleted while saving its log.")
-    return _read_workout_log(session, workout_log, workout.name)
+    exercise = session.get(Exercise, workout_log.exercise_id)
+    if exercise is None:
+        raise RuntimeError("The exercise was deleted while saving its session log.")
+    return _read_workout_session_log(workout_log, exercise)
 
 
-def _read_workout_log(
-    session: Session, workout_log: WorkoutLog, workout_name: str
-) -> WorkoutLogRead:
-    rows = session.exec(
-        select(WorkoutLogExercise, Exercise)
-        .join(Exercise, Exercise.id == WorkoutLogExercise.exercise_id)
-        .where(WorkoutLogExercise.workout_log_id == workout_log.id)
-        .order_by(Exercise.name)
-    ).all()
-    return WorkoutLogRead(
-        id=workout_log.id,
-        workout_id=workout_log.workout_id,
-        workout_name=workout_name,
-        performed_on=workout_log.performed_on,
-        exercises=[
-            WorkoutLogExerciseRead(
-                exercise=exercise,
-                sets=log_exercise.sets,
-                reps=log_exercise.reps,
-                weight_kg=log_exercise.weight_kg,
-                exhaustion_level=log_exercise.exhaustion_level,
-            )
-            for log_exercise, exercise in rows
-        ],
-    )
+def update_workout_session_log(
+    session: Session,
+    workout_log: WorkoutSessionLog,
+    data: WorkoutSessionLogUpdate,
+) -> WorkoutSessionLogRead:
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(workout_log, field, value)
+    session.add(workout_log)
+    session.commit()
+    session.refresh(workout_log)
+    exercise = session.get(Exercise, workout_log.exercise_id)
+    if exercise is None:
+        raise RuntimeError("The exercise for this session log no longer exists.")
+    return _read_workout_session_log(workout_log, exercise)
+
+
+def delete_workout_session_log(session: Session, workout_log: WorkoutSessionLog) -> None:
+    session.delete(workout_log)
+    session.commit()
+
+
+def get_workout_for_session(
+    session: Session, workout_session: WorkoutSession
+) -> Workout | None:
+    membership = session.get(UserWorkout, workout_session.user_workout_id)
+    if membership is None:
+        return None
+    return session.get(Workout, membership.workout_id)

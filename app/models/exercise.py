@@ -1,6 +1,11 @@
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Relationship, SQLModel
+
+if TYPE_CHECKING:
+    from app.models.workout_exercise import WorkoutExercise
+    from app.models.workout_session import WorkoutSessionLog
 
 
 class ExerciseBase(SQLModel):
@@ -15,6 +20,8 @@ class Exercise(ExerciseBase, table=True):
     __tablename__ = "exercises"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    workout_links: list["WorkoutExercise"] = Relationship(back_populates="exercise")
+    session_logs: list["WorkoutSessionLog"] = Relationship(back_populates="exercise")
 
 
 # Payload for creating an exercise

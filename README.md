@@ -67,25 +67,46 @@ secret with a long random value.
 The `/users` and `/workouts` endpoints require authentication. `/auth/me`
 returns the authenticated user.
 
-## Logging workout exercises
+## Workout sessions and exercise logs
 
 Create a workout, then add each exercise with `POST /workouts/{workout_id}/exercises`.
-Each entry requires an exercise ID, repetitions, and weight in kilograms.
-`sets` and the optional exhaustion rating (1–5) may also be supplied. For
-example:
+Each entry requires an exercise ID and may include a workout-specific
+description.
+
+Create a session with `POST /workout-sessions` using a workout UUID accessible
+to the current user and a datetime:
+
+```json
+{
+  "workout_id": "00000000-0000-0000-0000-000000000000",
+  "date": "2026-11-13T09:00:00Z"
+}
+```
+
+Add each performed set independently with
+`POST /workout-sessions/{session_id}/logs`, for example:
 
 ```json
 {
   "exercise_id": "00000000-0000-0000-0000-000000000000",
-  "sets": 3,
   "reps": 8,
-  "weight_kg": 40,
+  "weight": 40,
   "exhaustion_level": 4
 }
 ```
 
-Read the logged exercise details with `GET /workouts/{workout_id}/exercises`.
-Omit `exhaustion_level` when no rating is available.
+Individual set logs can be updated with `PATCH` or removed with `DELETE` at
+`/workout-sessions/{session_id}/logs/{log_id}`. A session can contain multiple
+logs for the same exercise. Finish a session with
+`POST /workout-sessions/{session_id}/end`; the response includes `ended_at`.
+Ending is idempotent, and new logs are rejected once a session has ended.
+
+The `20261113_0011` migration retains existing memberships and workout log
+history, converts each legacy set count into separate UUID-backed records, and
+retains old planned set/repetition/weight values in the workout-exercise
+association description. The former log tables are removed after migration.
+Downgrading this migration is unsupported because the new per-set logs cannot
+always be represented by the old composite-key log schema.
 
 Database migrations are managed with Alembic:
 
