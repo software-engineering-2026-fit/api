@@ -1,5 +1,5 @@
 from app.models.exercise import Exercise, ExerciseCreate, ExerciseRead
-from app.models.user import User, UserCreate, UserRead
+from app.models.user import User, UserCreate, UserRead, UserNewUsername
 from app.models.workout import Workout, WorkoutCreate
 from app.models.workout_exercise import (
     WorkoutExercise,
@@ -26,6 +26,7 @@ __all__ = [
     "User",
     "UserCreate",
     "UserRead",
+    "UserNewUsername",
     "Workout",
     "WorkoutExercise",
     "WorkoutExerciseCreate",

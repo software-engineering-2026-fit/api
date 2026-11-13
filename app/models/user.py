@@ -33,3 +33,6 @@ class UserRead(SQLModel):
     email: str
     name: str
     is_admin: bool
+
+class UserNewUsername(SQLModel):
+    new_username: str

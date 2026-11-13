@@ -37,3 +37,14 @@ def authenticate_user(
     ):
         return None
     return user
+
+
+def update_user_name(session: Session, user_id: UUID, new_name: str) -> User | None:
+    user = session.get(User, user_id)
+    if user is None:
+        return None
+    user.name = new_name
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
