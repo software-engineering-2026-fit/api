@@ -2,7 +2,7 @@ from uuid import UUID
 
 from datetime import datetime, timezone
 
-from sqlmodel import Session, or_, select
+from sqlmodel import Session, select
 
 from app.models import (
     Exercise,
@@ -26,18 +26,9 @@ from app.models import (
 def list_workouts(session: Session, user_id: UUID) -> list[Workout]:
     statement = (
         select(Workout)
-        .outerjoin(UserWorkout, UserWorkout.workout_id == Workout.id)
-        .where(or_(Workout.public.is_(True), UserWorkout.user_id == user_id))
+        .join(UserWorkout, UserWorkout.workout_id == Workout.id)
+        .where(UserWorkout.user_id == user_id)
         .distinct()
-    )
-    return list(session.exec(statement).all())
-
-
-def list_public_workouts(session: Session) -> list[Workout]:
-    statement = (
-        select(Workout)
-        .where(Workout.public.is_(True))
-        .order_by(Workout.name)
     )
     return list(session.exec(statement).all())
 
@@ -55,22 +46,6 @@ def get_workout_membership(
             UserWorkout.workout_id == workout_id,
         )
     ).first()
-
-
-def get_or_create_workout_membership(
-    session: Session, workout_id: UUID, user_id: UUID
-) -> UserWorkout:
-    membership = get_workout_membership(session, workout_id, user_id)
-    if membership is not None:
-        return membership
-    membership = UserWorkout(
-        user_id=user_id,
-        workout_id=workout_id,
-        owner=False,
-    )
-    session.add(membership)
-    session.flush()
-    return membership
 
 
 def list_workout_members(
@@ -99,7 +74,6 @@ def create_workout(
     workout = Workout(
         name=workout_data.name,
         description=workout_data.description,
-        public=workout_data.public,
     )
     session.add(workout)
     session.flush()

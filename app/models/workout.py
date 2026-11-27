@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 class WorkoutCreate(SQLModel):
     name: str
     description: str | None = None
-    public: bool = False
 
 
 class Workout(SQLModel, table=True):
@@ -20,7 +19,6 @@ class Workout(SQLModel, table=True):
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str
     description: str | None = None
-    public: bool = Field(default=False, nullable=False)
 
     user_links: list["UserWorkout"] = Relationship(
         back_populates="workout",

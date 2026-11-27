@@ -60,7 +60,7 @@ class WorkoutSchemaTests(unittest.TestCase):
         self.assertEqual(set(SQLModel.metadata.tables), expected_tables)
         expected_columns = {
             "users": {"id", "email", "name", "hashed_password", "is_admin"},
-            "workouts": {"id", "name", "public", "description"},
+            "workouts": {"id", "name", "description"},
             "user_workouts": {"id", "user_id", "workout_id", "owner"},
             "workout_session": {"id", "user_workout_id", "date", "ended_at"},
             "exercises": {
@@ -136,8 +136,8 @@ class WorkoutSchemaTests(unittest.TestCase):
         other_user = User(
             email="other@example.com", name="Other User", hashed_password="hash"
         )
-        workout = Workout(name="Strength", public=False)
-        another_workout = Workout(name="Cardio", public=False)
+        workout = Workout(name="Strength")
+        another_workout = Workout(name="Cardio")
         exercise = Exercise(name="Bench Press")
         self.session.add_all([user, other_user, workout, another_workout, exercise])
         self.session.flush()

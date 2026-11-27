@@ -1,19 +1,27 @@
-# api
-FastAPI backend
+# API
+
+FastAPI backend for managing users, exercise catalog entries, workouts,
+workout sessions, and individual set logs. The API uses SQLModel/Alembic,
+PostgreSQL in Docker, SQLite for the default local configuration, and OAuth2
+bearer JWT authentication.
+
+## Requirements
+
+- Python 3.12 or newer
+- [uv](https://docs.astral.sh/uv/) for local Python and dependency management
+- Docker Desktop with Docker Compose for the recommended setup
 
 ## Run with Docker
 
-Requirements: Docker Desktop with Docker Compose.
-
-1. From the project directory, create the environment file:
+1. Create the environment file:
 
    ```powershell
    Copy-Item .env.example .env
    ```
 
-2. Edit `.env` and replace `POSTGRES_PASSWORD` and `SECRET_KEY` with your own
-   values. Keep `POSTGRES_USER` and `POSTGRES_DB` consistent with the values
-   configured there.
+2. Replace `POSTGRES_PASSWORD` and `SECRET_KEY` in `.env` with secure values.
+   Keep `POSTGRES_USER` and `POSTGRES_DB` consistent between the PostgreSQL
+   container and your local configuration.
 
 3. Build and start the API and database:
 
@@ -21,25 +29,81 @@ Requirements: Docker Desktop with Docker Compose.
    docker compose up --build -d
    ```
 
-   The API waits for the database to become healthy and applies database
-   migrations automatically when it starts.
+   Compose waits for PostgreSQL to become healthy, and the API container runs
+   `alembic upgrade head` before starting Uvicorn.
 
-4. Open the API documentation at <http://localhost:8000/docs>. Check
-   <http://localhost:8000/health> for the health endpoint. To follow the API
-   startup logs, run:
+4. Open <http://localhost:8000/docs> for Swagger UI or
+   <http://localhost:8000/redoc> for ReDoc. Check
+   <http://localhost:8000/health> for the health endpoint.
 
-   ```powershell
-   docker compose logs -f api
-   ```
-
-To open a PostgreSQL prompt in the database container:
+Follow API logs or open a PostgreSQL prompt with:
 
 ```powershell
+docker compose logs -f api
 docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 ```
 
-Stop the containers with `docker compose down`. The database volume is kept,
-so its data remains for the next start.
+Stop the containers with `docker compose down`. The `postgres_data` volume is
+kept, so database data remains for the next start.
+
+## Local development
+
+Install the locked dependencies and start a local server:
+
+```powershell
+uv sync --frozen
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload
+```
+
+Without `DATABASE_URL`, the application uses `sqlite:///./app.db`. Set
+`SECRET_KEY` before requesting or validating JWT tokens. For example:
+
+```powershell
+$env:DATABASE_URL = "sqlite:///./app.db"
+$env:SECRET_KEY = "use-a-long-random-development-secret"
+uv run uvicorn app.main:app --reload
+```
+
+Run the test suite with:
+
+```powershell
+uv run python -m unittest tests/test_workout_schema.py
+```
+
+## Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DATABASE_URL` | `sqlite:///./app.db` | SQLAlchemy database URL. Docker Compose constructs a PostgreSQL URL from `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`. |
+| `POSTGRES_USER` | none in Compose | PostgreSQL role and database user. |
+| `POSTGRES_PASSWORD` | none in Compose | PostgreSQL password. Change the example value in `.env`. |
+| `POSTGRES_DB` | none in Compose | PostgreSQL database name. |
+| `SECRET_KEY` | none | Required secret used to sign and verify JWT access tokens. |
+| `JWT_ALGORITHM` | `HS256` | JWT signing and verification algorithm. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access-token lifetime in minutes. |
+
+`DATABASE_URL` is optional for local SQLite development. In Docker, Compose
+overrides it with a PostgreSQL connection to the `db` service.
+
+`SECRET_KEY` must remain the same across API restarts and replicas that share
+tokens. The password token flow is `/auth/token`; use the user's email as the
+`username` form field.
+
+## API overview
+
+The API exposes these route groups:
+
+- `/auth` - register, obtain a bearer token, and read the current user
+- `/users` - list/read users and update the current user's name
+- `/exercises` - list/filter/create the shared exercise catalog
+- `/workouts` - create/list workouts and manage their exercises
+- `/workout-sessions` - start/end/delete sessions and manage individual set logs
+- `/health` - lightweight liveness response
+
+All exercise access, user and workout operations, and workout sessions require
+a bearer token. Workout access is limited to users who have a workout
+membership.
 
 ## Authentication
 
@@ -64,8 +128,8 @@ secret with a long random value.
 
 3. Send the returned token as `Authorization: Bearer <token>`.
 
-The `/users` and `/workouts` endpoints require authentication. `/auth/me`
-returns the authenticated user.
+The `/users`, `/exercises`, `/workouts`, `/workout-sessions`, and `/auth/me`
+endpoints require authentication.
 
 ## Workout sessions and exercise logs
 
@@ -74,7 +138,7 @@ Each entry requires an exercise ID and may include a workout-specific
 description.
 
 Create a session with `POST /workout-sessions` using a workout UUID accessible
-to the current user and a datetime:
+to the current user. `date` is optional and defaults to the current UTC time:
 
 ```json
 {
@@ -107,6 +171,10 @@ The `20261113_0011` migration retains existing memberships and workout log
 history, converts each legacy set count into separate UUID-backed records, and
 retains old planned set/repetition/weight values in the workout-exercise
 association description. The former log tables are removed after migration.
+Migration `20261113_0012` adds nullable `ended_at` timestamps for workout
+sessions and is applied by the Docker entrypoint and normal upgrade command.
+Migration `20261127_0013` removes the workout `public` column. Workout access
+is now granted only through user-workout memberships.
 Downgrading this migration is unsupported because the new per-set logs cannot
 always be represented by the old composite-key log schema.
 

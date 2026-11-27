@@ -21,7 +21,6 @@ from app.services.workout_service import (
     create_workout_session_log,
     delete_workout_session_log,
     end_workout_session,
-    get_or_create_workout_membership,
     get_workout,
     get_workout_membership,
     get_workout_session,
@@ -56,12 +55,8 @@ def add_workout_session(
 ) -> WorkoutSessionRead:
     workout = get_workout(session, data.workout_id)
     membership = get_workout_membership(session, data.workout_id, current_user.id)
-    if workout is None or (membership is None and not workout.public):
+    if workout is None or membership is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout not found")
-    if membership is None:
-        membership = get_or_create_workout_membership(
-            session, workout.id, current_user.id
-        )
     workout_session = create_workout_session(session, membership.id, data)
     return _read_session(session, workout_session)
 
